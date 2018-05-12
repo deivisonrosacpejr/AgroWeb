@@ -4,6 +4,7 @@ var hbs = require('handlebars');
 var nodemailer = require('nodemailer');
 var router = express.Router();
 const database =  require('firebase/database');
+var db = firebase.database();
 
 
 /* GET home page. */
@@ -11,70 +12,90 @@ router.get('/', function(req, res, next){
   res.render('index', { title: 'Express', layout: "layout"});
 });
 
-router.get('/success', (req, res, next) => {
-  res.render('success', { title: 'Login Sucessful!'});
-});
-
-router.get('/email', (req, res, next) => {
+/*/////////////////////////////
+  FrontEnd - HOME
+//////////////////////////////*/
+router.post('/home', (req,res,next) => {
   res.render('email', { title: 'Contacte-nos!'});
 });
 
-router.get('/newuser', (req,res,next) => {
-  res.render('newuser', { title: 'Cadastre-se!'})
-});
-
-router.get('/newsletter', (req,res,next) => {
-  res.render('newsletter', { title: 'Newsletter'})
-});
-
+/*/////////////////////////////
+  BackEnd - LOGIN
+//////////////////////////////*/
 router.post('/login',(req,res,next) => {
-  const email = req.body.email;
-  const password = req.body.password;
-  firebase.auth().signInWithEmailAndPassword(email,password)
+  const mail = req.body.mail;
+  const pass = req.body.pass;
+  firebase.auth().signInWithEmailAndPassword(mail,pass)
   .then((user) => {
-    res.redirect('/newsletter');
+    res.redirect('/home');
   }).catch((error) => {
-      res.redirect('/newuser');
+      res.redirect('/cadastre-se'); 
   });
 });
 
-router.post('/userconfig', (req,res,next) => {
-  const usermail = req.body.usermail;
-  const userpassword = req.body.userpassword;
-  firebase.auth().createUserWithEmailAndPassword(usermail,userpassword)
-  .then((user) => {
-    res.redirect('/usercadastrated');
-  }).catch((error) => {
-    var errorCode = error.code;
-    var errorMessage = error.message;
-    res.redirect('/');
+/*/////////////////////////////
+  BackEnd - LOGOUT
+//////////////////////////////*/
+router.post('/logout',(req,res,next) => {
+  firebase.auth().signOut().then(function() {
+    res.redirect('index', { title: 'Express', layout: "layout"});
+  }).catch(function(error) {
+    res.redirect('/error');
   });
 });
 
-router.post('/newsletterdatabase', (req,res,next) => {
-  const firstname = req.body.firstname;
-  const lastname = req.body.lastname;
-  const email = req.body.email;
-  const date = req.body.date;
-  function writeUserData(firstaname, lastname, email){
-    firebase.database().ref('newsletter/'+ firstname).set({
-      first_name: firstname,
-      last_name: lastname,
-      mail: email,
-    });
-  }
-  writeUserData(firstname, lastname, email);
+/*////////////////////////////
+  BackEnd - CADASTRO
+//////////////////////////////*/
+router.post('/signup', (req,res,next) => {
+  const mail = req.body.mail;
+  const pass = req.body.pass;
+  const first_name = req.body.first_name;
+  const last_name = req.body.last_name;
+  const user_type = req.body.user_type;
+  const insc = req.body.insc;
+  const created = firebase.database.ServerValue.TIMESTAMP;
+  
+  firebase.auth().createUserWithEmailAndPassword(mail,pass)
+  .then((user) => {
+    var newuser = {
+      first_name: first_name,
+      last_name: last_name,
+      user_type: user_type,
+      insc = insc,
+      created = created,
+    };
+    var setDoc = db.collection('users').doc(user.uid).set(newuser);
+    res.redirect('/home');
+  }).catch((error) => {
+    res.redirect('/error'); //criar pagina de erro
+  });
 });
 
+/*////////////////////////////////////
+  BackEnd - CADASTRO NA NEWSLETTER
+//////////////////////////////////////*/
+router.post('/newsletter/signup', (req,res,next) => {
+  const name = req.body.name;
+  const mail = req.body.mail;
+  const entered = firebase.database.ServerValue.TIMESTAMP;
+  
+  var newNuser = {
+      name: name,
+      mail: mail,
+      entered: entered,
+    };
+   db.collection('newsletter').doc().set(newNuser);
+});
+
+/*/////////////////////////////
+  BackEnd - ENVIO DE EMAIL
+//////////////////////////////*/
 router.post('/contact',(req,res,next) => {
   const clientname = req.body.clientname;
   const clientemail = req.body.email;
   const content = req.body.content;
   const clientsubject = req.body.clientsubject;
-
-  //console.log('%s', clientname);
-  //console.log('%s', clientemail);
-  //console.log('%s', content);
 
   var transporte = nodemailer.createTransport({
     host: 'mail.megapool.com.br',
